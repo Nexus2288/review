@@ -1,0 +1,26 @@
+{
+  "demo-cafe": {
+    "name": "Brew & Bean Café",
+    "type": "cafe",
+    "placeId": "PASTE_GOOGLE_PLACE_ID_HERE",
+    "tagline": "Thanks for visiting us!",
+    "color": "#b45309",
+    "logo": ""
+  },
+  "demo-restaurant": {
+    "name": "Spice Garden Restaurant",
+    "type": "restaurant",
+    "placeId": "PASTE_GOOGLE_PLACE_ID_HERE",
+    "tagline": "We'd love to hear about your meal.",
+    "color": "#be123c",
+    "logo": ""
+  },
+  "demo-clinic": {
+    "name": "CareFirst Clinic",
+    "type": "clinic",
+    "placeId": "PASTE_GOOGLE_PLACE_ID_HERE",
+    "tagline": "Your feedback helps others find good care.",
+    "color": "#0f766e",
+    "logo": ""
+  }
+}

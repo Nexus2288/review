@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share your experience</title>
+<style>
+  :root { --brand:#2563eb; --bg:#f6f7fb; --card:#fff; --ink:#111827; --mute:#6b7280; --line:#e5e7eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0f1115; --card:#1a1d24; --ink:#f3f4f6; --mute:#9ca3af; --line:#2b2f3a; }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:480px; margin:0 auto; padding:20px 16px 40px; }
+  .head { text-align:center; padding:16px 0 8px; }
+  .logo { width:64px; height:64px; border-radius:50%; margin:0 auto 10px; display:grid; place-items:center;
+          background:var(--brand); color:#fff; font-size:28px; font-weight:700; overflow:hidden; }
+  .logo img { width:100%; height:100%; object-fit:cover; }
+  h1 { font-size:22px; margin:0; }
+  .tag { color:var(--mute); margin:4px 0 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; margin-top:16px; }
+  .label { font-weight:600; margin:0 0 10px; }
+  .stars { display:flex; justify-content:center; gap:6px; }
+  .stars button { background:none; border:0; font-size:42px; line-height:1; cursor:pointer; color:var(--line); padding:2px; }
+  .stars button.on { color:#f59e0b; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { border:1px solid var(--line); background:transparent; color:var(--ink); border-radius:999px; padding:9px 14px; font-size:15px; cursor:pointer; }
+  .chip.on { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .btn { width:100%; border:0; border-radius:12px; padding:15px; font-size:17px; font-weight:600; background:var(--brand); color:#fff; cursor:pointer; margin-top:16px; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); margin-top:10px; }
+  .opt { display:block; width:100%; border:2px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:transparent;
+         color:var(--ink); font:inherit; resize:none; }
+  .opt.sel { border-color:var(--brand); }
+  .hint { color:var(--mute); font-size:14px; text-align:center; margin:8px 0 0; }
+  .hidden { display:none; }
+  .loader { text-align:center; color:var(--mute); padding:30px 0; }
+  .spin { width:28px; height:28px; border:3px solid var(--line); border-top-color:var(--brand); border-radius:50%; margin:0 auto 10px; animation:s 0.8s linear infinite; }
+  @keyframes s { to { transform:rotate(360deg); } }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#111827; color:#fff; padding:12px 18px; border-radius:12px; font-size:15px; max-width:90%; text-align:center; }
+  .err { text-align:center; padding:40px 16px; color:var(--mute); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="loader"><div class="spin"></div>Loading…</div>
+</div>
+
+<script>
+const TAGS = {
+  restaurant: ['Tasty food','Great service','Friendly staff','Clean place','Nice ambience','Value for money','Quick service','Good portions'],
+  cafe:       ['Great coffee','Tasty snacks','Cozy ambience','Friendly staff','Quick service','Clean place','Good place to work or chat','Value for money'],
+  clinic:     ['Caring doctor','Friendly staff','Clean clinic','Short waiting time','Clear explanation','Easy appointment','Good value','Hygienic']
+};
+const LOW_TAGS = {
+  restaurant: ['Food quality','Service','Staff behaviour','Cleanliness','Ambience','Pricing','Waiting time'],
+  cafe:       ['Coffee quality','Snacks','Ambience','Staff behaviour','Waiting time','Cleanliness','Pricing'],
+  clinic:     ['Waiting time','Staff behaviour','Cleanliness','Explanation by doctor','Appointment process','Pricing']
+};
+
+const $app = document.getElementById('app');
+const slug = new URLSearchParams(location.search).get('b') || '';
+let biz = null, rating = 0, tags = new Set(), reviews = [], chosen = 0, regens = 0;
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+(async function init() {
+  try {
+    const all = await (await fetch('businesses.json')).json();
+    biz = all[slug];
+  } catch (e) {}
+  if (!biz) { $app.innerHTML = '<div class="err">This link is not valid. Please scan the QR code again.</div>'; return; }
+  document.title = 'Review ' + biz.name;
+  document.documentElement.style.setProperty('--brand', biz.color || '#2563eb');
+  renderStep1();
+})();
+
+function head() {
+  const logo = biz.logo ? `<img src="${esc(biz.logo)}" alt="">` : esc(biz.name.trim()[0] || '★');
+  return `<div class="head"><div class="logo">${logo}</div><h1>${esc(biz.name)}</h1><p class="tag">${esc(biz.tagline || '')}</p></div>`;
+}
+
+function renderStep1() {
+  $app.innerHTML = head() + `
+  <div class="card">
+    <p class="label" style="text-align:center">How was your experience?</p>
+    <div class="stars" id="stars">${[1,2,3,4,5].map(n => `<button data-n="${n}" aria-label="${n} stars">★</button>`).join('')}</div>
+  </div>
+  <div class="card hidden" id="tagCard">
+    <p class="label" id="tagLabel"></p>
+    <div class="chips" id="chips"></div>
+  </div>
+  <button class="btn hidden" id="gen">Write my review ✨</button>
+  <p class="hint hidden" id="hint1">Tap one or more options above</p>`;
+  document.getElementById('stars').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    rating = +b.dataset.n; tags.clear(); paintStars(); paintTags();
+  };
+  document.getElementById('gen').onclick = generate;
+  if (rating) { paintStars(); paintTags(); }
+}
+
+function paintStars() {
+  document.querySelectorAll('#stars button').forEach(b => b.classList.toggle('on', +b.dataset.n <= rating));
+}
+function paintTags() {
+  const low = rating <= 3;
+  const list = (low ? LOW_TAGS : TAGS)[biz.type] || TAGS.restaurant;
+  document.getElementById('tagCard').classList.remove('hidden');
+  document.getElementById('tagLabel').textContent = low ? 'What could be better?' : 'What did you like?';
+  const c = document.getElementById('chips');
+  c.innerHTML = list.map(t => `<button class="chip ${tags.has(t) ? 'on' : ''}">${esc(t)}</button>`).join('');
+  c.onclick = e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    const t = b.textContent; tags.has(t) ? tags.delete(t) : tags.add(t);
+    b.classList.toggle('on'); updateGen();
+  };
+  updateGen();
+}
+function updateGen() {
+  const g = document.getElementById('gen');
+  g.classList.remove('hidden');
+  g.disabled = tags.size === 0;
+  document.getElementById('hint1').classList.toggle('hidden', tags.size > 0);
+}
+
+async function generate() {
+  $app.innerHTML = head() + '<div class="loader"><div class="spin"></div>Writing your review…</div>';
+  try {
+    const r = await fetch('/api/review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ b: slug, rating, tags: [...tags] })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const er = new Error(j.error || 'Server error'); er.detail = j.detail || ('HTTP ' + r.status); throw er; }
+    reviews = j.reviews;
+  } catch (e) {
+    $app.innerHTML = head() + `<div class="card"><p class="label">Couldn't write the review right now</p>
+      <p class="hint" style="text-align:left;word-break:break-word">${esc(e.detail || e.message || '')}</p>
+      <button class="btn" id="retry">Try again</button>
+      <button class="btn ghost" id="manual">Write it myself</button></div>`;
+    document.getElementById('retry').onclick = generate;
+    document.getElementById('manual').onclick = () => { reviews = [fallback()[0], '', '']; renderStep2(); };
+    return;
+  }
+  chosen = 0;
+  renderStep2();
+}
+
+function fallback() {
+  const t = [...tags].map(x => x.toLowerCase());
+  const list = t.length > 1 ? t.slice(0, -1).join(', ') + ' and ' + t.slice(-1) : (t[0] || 'the experience');
+  const name = biz.name;
+  if (rating >= 4) return [
+    `Had a really good visit to ${name}. I liked the ${list}. Would happily come back and recommend it to friends.`,
+    `Great experience at ${name}! Special mention for the ${list}. Worth a visit.`,
+    `Happy with my visit to ${name}. The ${list} stood out for me. Thank you!`
+  ];
+  if (rating === 3) return [
+    `My visit to ${name} was okay overall. The ${list} could be better, but I hope they improve.`,
+    `An average experience at ${name}. Some things were fine, but the ${list} needs attention.`,
+    `${name} has potential. I felt the ${list} was just average on my visit.`
+  ];
+  return [
+    `I was disappointed with my visit to ${name}. The ${list} did not meet my expectations. I hope this improves.`,
+    `Not a great experience at ${name}. The ${list} needs real improvement.`,
+    `Unfortunately my visit to ${name} fell short, mainly because of the ${list}.`
+  ];
+}
+
+function renderStep2() {
+  $app.innerHTML = head() + `
+  <div class="card">
+    <p class="label">Pick a review (you can edit it)</p>
+    <div id="opts">${reviews.map((r, i) => `<textarea class="opt ${i === chosen ? 'sel' : ''}" data-i="${i}" rows="4">${esc(r)}</textarea>`).join('')}</div>
+    <button class="btn" id="post">Copy & Post on Google</button>
+    <button class="btn ghost" id="regen">↻ Write different options</button>
+    <button class="btn ghost" id="back">← Change rating or points</button>
+    <p class="hint">Your review will be copied. Paste it on the Google page and tap Post.</p>
+    <p class="hint"><a id="glink" href="#" style="color:var(--mute)">Page not opening? Tap here</a></p>
+  </div>`;
+  const opts = document.getElementById('opts');
+  opts.addEventListener('focusin', e => select(e.target));
+  opts.addEventListener('click', e => select(e.target));
+  document.getElementById('post').onclick = post;
+  document.getElementById('glink').onclick = e => { e.preventDefault(); location.href = gUrl(); };
+  document.getElementById('back').onclick = renderStep1;
+  const rg = document.getElementById('regen');
+  if (regens >= 3) rg.classList.add('hidden');
+  rg.onclick = () => { regens++; generate(); };
+}
+function select(el) {
+  if (!el.classList.contains('opt')) return;
+  chosen = +el.dataset.i;
+  document.querySelectorAll('.opt').forEach(o => o.classList.toggle('sel', o === el));
+}
+
+function gUrl() { return biz.reviewUrl || ('https://search.google.com/local/writereview?placeid=' + encodeURIComponent(String(biz.placeId).trim())); }
+
+async function post() {
+  const text = document.querySelectorAll('.opt')[chosen].value.trim();
+  let copied = false;
+  try { await navigator.clipboard.writeText(text); copied = true; }
+  catch (e) {
+    const ta = document.querySelectorAll('.opt')[chosen];
+    ta.focus(); ta.select();
+    try { copied = document.execCommand('copy'); } catch (_) {}
+  }
+  toast(copied ? 'Review copied! Paste it on the next page.' : 'Please long-press the text and copy it, then open Google.');
+  if (!biz.reviewUrl && (!biz.placeId || /PASTE/.test(biz.placeId))) { toast('Google link is not set for this business yet.'); return; }
+  const url = gUrl();
+  setTimeout(() => { location.href = url; }, copied ? 1300 : 2500);
+}
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+}
+</script>
+</body>
+</html>
