@@ -2,7 +2,7 @@
   "demo-cafe": {
     "name": "Brew & Bean Café",
     "type": "cafe",
-    "placeId": "PASTE_GOOGLE_PLACE_ID_HERE",
+    "placeId": "https://search.google.com/local/writereview?placeid=ChIJucPxYnC1bTkR2jnf1ZypcJQ",
     "tagline": "Thanks for visiting us!",
     "color": "#b45309",
     "logo": ""
